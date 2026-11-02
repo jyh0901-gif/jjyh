@@ -14,7 +14,6 @@
         select, input[type="text"] { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; background: #fff; }
         .signature-container { position: relative; border: 2px dashed #007bff; border-radius: 6px; background: #fafafa; margin-top: 6px; }
         canvas { width: 100%; height: 180px; touch-action: none; display: block; }
-        .btn-group { display: flex; gap: 8px; margin-top: 8px; }
         button { padding: 12px; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: bold; width: 100%; }
         .btn-submit { background: #007bff; color: white; margin-top: 10px; }
         .btn-clear { background: #6c757d; color: white; }
@@ -46,7 +45,7 @@
         <div class="signature-container">
             <canvas id="signature-pad"></canvas>
         </div>
-        <div class="btn-group" style="margin-top: 8px;">
+        <div style="margin-top: 8px;">
             <button type="button" class="btn-clear" onclick="signaturePad.clear()">서명 지우기</button>
         </div>
     </div>
@@ -68,10 +67,8 @@
     window.onresize = resizeCanvas;
     resizeCanvas();
 
-    // 💡 GitHub 설정 (본인 정보로 수정하세요)
-    const GITHUB_TOKEN = "";
-    const OWNER = "jyh0901-gif";
-    const REPO = "jjyh";
+    // 💡 Step 1에서 복사한 구글 앱 스크립트 웹 앱 URL을 여기에 넣으세요!
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGBGadOCXiAKNY71eBXgPhXH3t21t_P6GEZvDTH7M8410bDeXfL2C02gEqylkdoHW9cA/exec";
 
     async function submitData() {
         const department = document.getElementById('department').value;
@@ -85,44 +82,29 @@
         btn.disabled = true;
         btn.innerText = "제출 중...";
 
-        const signatureData = signaturePad.toDataURL('image/png');
-        const timestamp = new Date().toISOString();
-        const fileName = `data/${Date.now()}_${encodeURIComponent(name)}.json`;
-
-        const submissionData = {
+        const payload = {
             department: department,
             name: name,
-            timestamp: timestamp,
-            signature: signatureData
+            signature: signaturePad.toDataURL('image/png')
         };
 
-        // GitHub API를 통한 파일 생성 (Commit) 요청
         try {
-            const contentEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(submissionData, null, 2))));
-            
-            const response = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${fileName}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: `Add signature: ${name} (${department})`,
-                    content: contentEncoded
-                })
+            // 구글 시트로 데이터 전송 (no-cors 모드 대응)
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
-            if (response.ok) {
-                alert(`[${department}] ${name}님, 참여 서명이 정상적으로 저장되었습니다!`);
-                document.getElementById('department').selectedIndex = 0;
-                document.getElementById('name').value = '';
-                signaturePad.clear();
-            } else {
-                alert("서명 저장에 실패했습니다. 관리자에게 문의하세요.");
-            }
+            alert(`[${department}] ${name}님, 참여 서명이 정상적으로 저장되었습니다!`);
+            document.getElementById('department').selectedIndex = 0;
+            document.getElementById('name').value = '';
+            signaturePad.clear();
+
         } catch (error) {
             console.error(error);
-            alert("네트워크 오류가 발생했습니다.");
+            alert("전송 중 오류가 발생했습니다. 다시 시도해 주세요.");
         } finally {
             btn.disabled = false;
             btn.innerText = "제출 및 참여 완료";
